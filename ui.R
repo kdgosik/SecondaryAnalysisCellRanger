@@ -32,12 +32,21 @@ shinyUI(fluidPage(
       selectizeInput(inputId = "gene_symbol", 
                      label = "Select Gene Symbols", 
                      choices = "",
-                     multiple = TRUE)
+                     multiple = TRUE),
+      
+      sliderInput(inputId = "plot_limits", 
+                  label = "Value Limits", 
+                  min = 0, 
+                  max = 10, 
+                  value = c(3, 4), 
+                  step = 0.5)
     ),
     
     # Show the t-SNE plot
     mainPanel(
-      plotlyOutput("genePlot") # turn into modules
+      plotlyOutput("genePlot"),
+      verbatimTextOutput("transform"),
+      plotOutput("heatmap")
     )
   )
 ))
