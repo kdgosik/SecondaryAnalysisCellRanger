@@ -19,9 +19,15 @@ shinyUI(fluidPage(
   # Sidebar with a selector for genes
   sidebarLayout(
     sidebarPanel(
-      shinyDirButton(id = "file_path", 
-                     label = "Cellranger Pipestance Path",
-                     title = "Button"),
+      
+      radioButtons("input_data", "Select Input Source", choices = c("Example", "Select Directory")),
+      
+      conditionalPanel(
+        condition = "input.input_data == 'Select Directory'",
+        shinyDirButton(id = "file_path", 
+                       label = "Cellranger Pipestance Path",
+                       title = "Button")
+      ),
       
       selectizeInput(inputId = "gene_symbol", 
                      label = "Select Gene Symbols", 
@@ -31,7 +37,7 @@ shinyUI(fluidPage(
     
     # Show the t-SNE plot
     mainPanel(
-      plotlyOutput("genePlot")
+      plotlyOutput("genePlot") # turn into modules
     )
   )
 ))

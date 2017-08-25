@@ -25,14 +25,19 @@ shinyServer(function(input, output, session) {
     # gets the path to the cellranger_pipestance_path
   outs <- reactive({
     
-    # path to cell ranger output
-    home <- normalizePath("/") # normalizes home path
+    if( input$input_data != "Example" ){
+        # path to cell ranger output
+      home <- normalizePath("/") # normalizes home path
     
-      # gets cellranger path from the inputed directory
-    cellranger_pipestance_path <- file.path(home, 
-                                            paste(unlist(input$file_path$path[-1]), 
-                                            collapse = .Platform$file.sep))
+        # gets cellranger path from the inputed directory
+      cellranger_pipestance_path <- file.path(home, 
+                                              paste(unlist(input$file_path$path[-1]), 
+                                              collapse = .Platform$file.sep))
 
+    }else{
+      cellranger_pipestance_path <- "data"
+    }
+    
       # loads gene - barcode matrix
     gbm <- load_cellranger_matrix(cellranger_pipestance_path)
       # loads analysis results
@@ -46,7 +51,7 @@ shinyServer(function(input, output, session) {
   })
   
     # when input directory is selected updates gene symbols name for selection
-  observeEvent(input$file_path, {
+  observeEvent(!is.null(outs) | !is.null(input$file_path), {
     
     updateSelectizeInput(session = session, 
                          inputId = "gene_symbol",
@@ -55,7 +60,7 @@ shinyServer(function(input, output, session) {
     
   })
   
-    # outputs plotly version of tSNE plot
+    # output plotly version of tSNE plot
   output$genePlot <- renderPlotly({
     
       # if not genes are provide, displays total counts
