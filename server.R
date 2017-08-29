@@ -16,6 +16,7 @@ library(shinyFiles)
 library(plotly)
 library(cellranger)
 library(cellrangerRkit)
+# source("scripts/ModularUMItSNEPlot.R")
 
 shinyServer(function(input, output, session) {
   
@@ -24,6 +25,8 @@ shinyServer(function(input, output, session) {
   
     # gets the path to the cellranger_pipestance_path
   outs <- reactive({
+    
+    cellranger_pipestance_path <- "data"
     
     if( input$input_data != "Example" ){
         # path to cell ranger output
@@ -34,8 +37,6 @@ shinyServer(function(input, output, session) {
                                               paste(unlist(input$file_path$path[-1]), 
                                               collapse = .Platform$file.sep))
 
-    }else{
-      cellranger_pipestance_path <- "data"
     }
     
       # loads gene - barcode matrix
@@ -48,13 +49,13 @@ shinyServer(function(input, output, session) {
     
       # loads analysis results
     analysis_results <- load_cellranger_analysis_results(cellranger_pipestance_path)
-      # tSNE projects from analysis results
-    tsne_proj <- analysis_results$tsne
   
       # returns list of the outputs needed for plots
     return(list(gbm = gbm, 
                 gbm_log = gbm_log,
-                tsne_proj = tsne_proj))
+                tsne_proj = analysis_results$tsne, # tSNE projects from analysis results
+                clustering = analysis_results$clustering) # clustering from analysis results
+           ) 
 
   })
   
@@ -64,54 +65,66 @@ shinyServer(function(input, output, session) {
     updateSelectizeInput(session = session, 
                          inputId = "gene_symbol",
                          label = "Select Gene Symbols",
-                         choices = fData(outs()[["gbm"]])$symbol)
+                         choices = fData(outs()[["gbm_log"]])$symbol)
     
   })
   
     # output plotly version of tSNE plot
   output$genePlot <- renderPlotly({
-    
+
       # if not genes are provide, displays total counts
     if( is.null(input$gene_symbol) ){
-      
-      visualize_umi_counts(gbm = outs()[["gbm"]], 
+
+      visualize_umi_counts(gbm = outs()[["gbm"]],
                            projection = outs()[["tsne_proj"]][c("TSNE.1", "TSNE.2")],
                            limits = input$plot_limits)
-      
+
     }else{
-      
-        # display plot by genes provided  
+
+        # display plot by genes provided
       visualize_gene_markers(gbm = outs()[["gbm_log"]],
                              gene_probes = input$gene_symbol,
                              projection = outs()[["tsne_proj"]][c("TSNE.1", "TSNE.2")],
                              limits = input$plot_limits)
-      
+
     }
-    
+
   })
-  
+
     # printing out the number of non-zero results
   output$transform <- renderPrint({
-    
-    paste("After transformation, the gene-barcode matrix contains", 
-          dim(outs()[["gbm_log"]])[1], "genes for",  
+
+    paste("After transformation, the gene-barcode matrix contains",
+          dim(outs()[["gbm_log"]])[1], "genes for",
           dim(outs()[["gbm_log"]])[2], "cells")
-    
+
     })
-  
+
+  # callModule(module = UMItSNEPlotServer, 
+  #            id = "tSNE", 
+  #            outs = outs, 
+  #            gene_symbols = reactive({input$gene_symbol}))
+    
   output$heatmap <- renderPlot({
     
-    example_K <- 5 # number of clusters (use "Set3" for brewer.pal below if example_K > 8)
+    example_K <- 3 # number of clusters (use "Set3" for brewer.pal below if example_K > 8)
     example_col <- rev(brewer.pal(example_K,"Set2")) # customize plotting colors
-    cluster_result <- analysis_results$clustering[[paste("kmeans", example_K,"clusters",sep="_")]]
+    cluster_result <- outs()[["clustering"]][[paste("kmeans", example_K,"clusters",sep="_")]]
+    
     # sort the cells by the cluster labels
-    cells_to_plot <- order_cell_by_clusters(gbm, cluster_result$Cluster)
+    cells_to_plot <- order_cell_by_clusters(outs()[["gbm"]], cluster_result$Cluster)
+    
     # order the genes from most up-regulated to most down-regulated in each cluster
-    prioritized_genes <- prioritize_top_genes(gbm, cluster_result$Cluster, "sseq", min_mean=0.5)
+    prioritized_genes <- prioritize_top_genes(outs()[["gbm"]], cluster_result$Cluster, "sseq", min_mean=0.5)
     
     # create values and axis annotations for pheatmap
-    gbm_pheatmap(log_gene_bc_matrix(gbm), prioritized_genes, cells_to_plot,
-                 n_genes=3, colour=example_col, limits=c(-1,2))
+    gbm_pheatmap(gbm = log_gene_bc_matrix(outs()[["gbm"]]), 
+                 genes_to_plot = prioritized_genes, 
+                 cells_to_plot = cells_to_plot,
+                 n_genes = 3, 
+                 colour = example_col, 
+                 limits = c(-1, 2))
     
   })
+  
 })

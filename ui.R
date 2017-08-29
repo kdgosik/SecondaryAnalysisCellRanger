@@ -11,7 +11,8 @@ library(plotly)
 library(cellranger)
 library(cellrangerRkit)
 
-shinyUI(fluidPage(
+shinyUI(
+  fluidPage(
 
   # Application title
   titlePanel("Gene Expression Explore"),
@@ -34,11 +35,11 @@ shinyUI(fluidPage(
                      choices = "",
                      multiple = TRUE),
       
-      sliderInput(inputId = "plot_limits", 
-                  label = "Value Limits", 
-                  min = 0, 
-                  max = 10, 
-                  value = c(3, 4), 
+      sliderInput(inputId = "plot_limits",
+                  label = "Value Limits",
+                  min = 0,
+                  max = 10,
+                  value = c(0, 4),
                   step = 0.5)
     ),
     
@@ -46,7 +47,12 @@ shinyUI(fluidPage(
     mainPanel(
       plotlyOutput("genePlot"),
       verbatimTextOutput("transform"),
+      # UMItSNEPlotUI("tSNE"),
       plotOutput("heatmap")
-    )
-  )
-))
+      ) # mainPanel
+    
+    ) # sidebarLayout
+  
+  ) # fluidPage
+  
+) # shinyUI
