@@ -10,6 +10,9 @@ library(shinyFiles)
 library(plotly)
 library(cellranger)
 library(cellrangerRkit)
+source("scripts/ModularUMItSNEPlot.R")
+source("scripts/ModularClusterExplore10x.R")
+source("scripts/ModularReadCellRanger.R")
 
 shinyUI(
   fluidPage(
@@ -21,6 +24,8 @@ shinyUI(
   sidebarLayout(
     sidebarPanel(
       
+      # ReadCellRangerUI("10x_path")
+      
       radioButtons("input_data", "Select Input Source", choices = c("Example", "Select Directory")),
       
       conditionalPanel(
@@ -28,12 +33,7 @@ shinyUI(
         shinyDirButton(id = "file_path", 
                        label = "Cellranger Pipestance Path",
                        title = "Button")
-      ),
-      
-      selectizeInput(inputId = "gene_symbol", 
-                     label = "Select Gene Symbols", 
-                     choices = "",
-                     multiple = TRUE)
+      )
       
     ),
     

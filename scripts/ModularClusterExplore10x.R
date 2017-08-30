@@ -9,45 +9,39 @@ ClusterExplore10xUI <- function(id) {
   ns <- NS(id)
   
   ## Ui Outputs Here from server below
-  fillCol(
+  tagList(
     
-    column(width = 12,
+    div(
       shiny::sliderInput(inputId = ns("num_clusters"), 
                        label = "Number of Clusters", 
                        min = 2, max = 10, 
                        value = 5, step = 1)
-      ), # column
+      ), # div
     
-    column(width = 12,
-           
-           div(
-             shiny::plotOutput(ns("cluster_plot"))
-           ) # div
-           
-        ), # column
+    div(
+      shiny::plotOutput(ns("cluster_plot"))
+      ), # div
     
-    column(width = 12,
-        div(
-          shiny::sliderInput(inputId = "n_genes", 
-                             label = "Number of Genes", 
-                             min = 1, max = 20, 
-                             value = 3, step = 1)
-          ), # div
-        
-        div(
-          shiny::sliderInput(inputId = "hm_limits",
-                             label = "Heatmap Limits",
-                             min = -5, max = 5,
-                             value = c(-1, 2), step = 0.5)
-          ), # div
-        
-        div(
-          shiny::plotOutput(ns("pheatmap"))
-          ) # div
-        
-        ) # column
+    div(
+      shiny::numericInput(inputId = ns("n_genes"), 
+                         label = "Number of Genes", 
+                         value = 3,
+                         min = 1, max = 20,
+                         step = 1)
+      ), # div
     
-    ) # fillCol
+    div(
+      shiny::sliderInput(inputId = ns("hm_limits"),
+                         label = "Heatmap Limits",
+                         min = -5, max = 5,
+                         value = c(-1, 2), step = 0.5)
+      ), # div
+    
+    div(
+      shiny::plotOutput(ns("pheatmap"))
+      ) # div
+    
+    ) # tagList
 
 }
 
@@ -59,21 +53,24 @@ ClusterExplore10xServer <- function(input, output, session, outs) {
   
   cluster_result <- reactive({
   
-    outs()[["clustering"]][[paste("kmeans", input$num_cluster, "clusters", sep = "_")]]
+    outs()[["clustering"]][[paste("kmeans", input$num_clusters, "clusters", sep = "_")]]
     
+  })
+  
+  example_col <- reactive({
+    rev(brewer.pal(input$num_clusters, ifelse(input$num_clusters < 9, "Set2", "Set3"))) # customize plotting colors
   })
   
   output$cluster_plot <- renderPlot({
     
-    example_col <- rev(brewer.pal(input$num_clusters, ifelse(input$num_clusters < 9, "Set2", "Set3"))) # customize plotting colors
-    visualize_clusters(cluster_result()$Cluster,tsne_proj[c("TSNE.1","TSNE.2")],
-                       colour = example_col)
+    visualize_clusters(cluster_result = cluster_result()$Cluster,
+                       projection = outs()[["tsne_proj"]][c("TSNE.1","TSNE.2")],
+                       colour = example_col())
 
   })
   
   output$pheatmap <- renderPlot({
     
-    example_col <- rev(brewer.pal(input$num_clusters, ifelse(input$num_clusters < 9, "Set2", "Set3"))) # customize plotting colors
     # sort the cells by the cluster labels
     cells_to_plot <- order_cell_by_clusters(outs()[["gbm"]], cluster_result()$Cluster)
     # order the genes from most up-regulated to most down-regulated in each cluster
@@ -83,8 +80,8 @@ ClusterExplore10xServer <- function(input, output, session, outs) {
                  genes_to_plot = prioritized_genes, 
                  cells_to_plot = cells_to_plot,
                  n_genes = input$n_genes, 
-                 colour = example_col, 
-                 limits = c(-1,2))
+                 colour = example_col(), 
+                 limits = input$hm_limits)
     
   })
     

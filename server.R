@@ -18,6 +18,7 @@ library(cellranger)
 library(cellrangerRkit)
 source("scripts/ModularUMItSNEPlot.R")
 source("scripts/ModularClusterExplore10x.R")
+source("scripts/ModularReadCellRanger.R")
 
 shinyServer(function(input, output, session) {
   
@@ -60,26 +61,18 @@ shinyServer(function(input, output, session) {
 
   })
   
-    # when input directory is selected updates gene symbols name for selection
-  observeEvent(!is.null(outs) | !is.null(input$file_path), {
-    
-    updateSelectizeInput(session = session, 
-                         inputId = "gene_symbol",
-                         label = "Select Gene Symbols",
-                         choices = fData(outs()[["gbm_log"]])$symbol)
-    
-  })
+  # outs <- callModule(module = ReadCellRangerServer, id = "10x_path")
   
     # calling ModularUMItSNEPlot.R functions
   callModule(module = UMItSNEPlotServer, 
             id = "tSNE", 
-            outs = outs, 
-            gene_symbols = reactive({input$gene_symbol}))
+            outs = outs)
   
   callModule(module = ClusterExplore10xServer,
              id = "cluster_explore",
              outs = outs)
     
+  ## Can remove once callModule for ClusterExplore10x works properly
   output$heatmap <- renderPlot({
     
     example_K <- 3 # number of clusters (use "Set3" for brewer.pal below if example_K > 8)

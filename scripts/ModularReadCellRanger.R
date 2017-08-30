@@ -1,0 +1,96 @@
+## require()  for required libraries for module
+# if cellranger R kit is not installed then install it
+if( !{"cellrangerRkit" %in% installed.packages()} ) {
+  source("http://cf.10xgenomics.com/supp/cell-exp/rkit-install-2.0.0.R")
+}
+
+# Load packages
+library(shiny)
+library(shinyFiles)
+library(cellranger)
+library(cellrangerRkit)
+
+# MODULE UI
+ReadCellRangerUI <- function(id) {
+  ns <- NS(id)
+  
+  ## Ui Outputs Here from server below
+  fillCol(
+    radioButtons(ns("input_data"), "Select Input Source", choices = c("Example", "Select Directory")),
+    
+    conditionalPanel(
+      condition = "input.input_data == 'Select Directory'",
+      shinyDirButton(id = ns("file_path"), 
+                     label = "Cellranger Pipestance Path",
+                     title = "Button")
+    ),
+    
+    selectizeInput(inputId = ns("gene_symbol"), 
+                   label = "Select Gene Symbols", 
+                   choices = "",
+                   multiple = TRUE)
+    
+    ) # fillCol
+
+}
+
+
+
+# MODULE Server
+ReadCellRangerServer <- function(input, output, session) {
+  
+  ## Place server code here to be called by callModule
+    ## place whatever inputs needed in function call
+  
+  # defines root directory for the user
+  shinyDirChoose(input, 'file_path', roots = c(root = '/'))
+  
+  # gets the path to the cellranger_pipestance_path
+  outs <- reactive({
+    
+    cellranger_pipestance_path <- "data"
+    
+    if( input$input_data != "Example" ){
+      # path to cell ranger output
+      home <- normalizePath("/") # normalizes home path
+      
+      # gets cellranger path from the inputed directory
+      cellranger_pipestance_path <- file.path(home, 
+                                              paste(unlist(input$file_path$path[-1]), 
+                                                    collapse = .Platform$file.sep))
+      
+    }
+    
+    # loads gene - barcode matrix
+    gbm <- load_cellranger_matrix(cellranger_pipestance_path)
+    
+    # normalize nonzero genes
+    use_genes <- get_nonzero_genes(gbm)
+    gbm_bcnorm <- normalize_barcode_sums_to_median(gbm[use_genes, ])
+    gbm_log <- log_gene_bc_matrix(gbm_bcnorm, base = 10)
+    
+    # loads analysis results
+    analysis_results <- load_cellranger_analysis_results(cellranger_pipestance_path)
+    
+    # returns list of the outputs needed for plots
+    return(list(gbm = gbm, 
+                gbm_log = gbm_log,
+                tsne_proj = analysis_results$tsne, # tSNE projects from analysis results
+                clustering = analysis_results$clustering) # clustering from analysis results
+    ) 
+    
+  })
+  
+  # when input directory is selected updates gene symbols name for selection
+  observeEvent(!is.null(outs) | !is.null(input$file_path), {
+    
+    updateSelectizeInput(session = session, 
+                         inputId = "gene_symbol",
+                         label = "Select Gene Symbols",
+                         choices = fData(outs()[["gbm_log"]])$symbol)
+    
+  })
+  
+  return(outs)
+
+}
