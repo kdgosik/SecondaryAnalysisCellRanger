@@ -15,22 +15,21 @@ ReadCellRangerUI <- function(id) {
   ns <- NS(id)
   
   ## Ui Outputs Here from server below
-  fillCol(
-    radioButtons(ns("input_data"), "Select Input Source", choices = c("Example", "Select Directory")),
+  tagList(
+    div(
+      radioButtons(ns("input_data"), "Select Input Source", choices = c("Example", "Select Directory"))
+    ), # div
     
-    conditionalPanel(
-      condition = "input.input_data == 'Select Directory'",
-      shinyDirButton(id = ns("file_path"), 
-                     label = "Cellranger Pipestance Path",
-                     title = "Button")
-    ),
+    div(
+        conditionalPanel(
+          condition = "input.input_data == 'Select Directory'",
+          shinyDirButton(id = ns("file_path"), 
+                         label = "Cellranger Pipestance Path",
+                         title = "Button")
+          ) # conditionalPanel
+    ) # div
     
-    selectizeInput(inputId = ns("gene_symbol"), 
-                   label = "Select Gene Symbols", 
-                   choices = "",
-                   multiple = TRUE)
-    
-    ) # fillCol
+    ) # tagList
 
 }
 

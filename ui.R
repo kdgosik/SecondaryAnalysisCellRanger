@@ -6,10 +6,6 @@
 #
 
 library(shiny)
-library(shinyFiles)
-library(plotly)
-library(cellranger)
-library(cellrangerRkit)
 source("scripts/ModularUMItSNEPlot.R")
 source("scripts/ModularClusterExplore10x.R")
 source("scripts/ModularReadCellRanger.R")
@@ -22,34 +18,26 @@ shinyUI(
   
   # Sidebar with a selector for genes
   sidebarLayout(
+    
     sidebarPanel(
       
-      # ReadCellRangerUI("10x_path")
+      ReadCellRangerUI("10x_path")
       
-      radioButtons("input_data", "Select Input Source", choices = c("Example", "Select Directory")),
-      
-      conditionalPanel(
-        condition = "input.input_data == 'Select Directory'",
-        shinyDirButton(id = "file_path", 
-                       label = "Cellranger Pipestance Path",
-                       title = "Button")
-      )
-      
-    ),
+    ), # sidebarPanel
     
     # Show the t-SNE plot
     mainPanel(
       tabsetPanel(
+        
         tabPanel(title = "tSNE",
           UMItSNEPlotUI("tSNE")
-        ),
+          ), # tabPanel
+        
         tabPanel(title = "Cluster",
           ClusterExplore10xUI("cluster_explore")
-                 ),
-        tabPanel(title = "Heatmap",
-          plotOutput("heatmap")
-        )
-      )
+          ) # tabPanel
+        
+      ) # tabsetPanel
       
       ) # mainPanel
     
