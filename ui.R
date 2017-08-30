@@ -8,7 +8,7 @@
 library(shiny)
 source("scripts/ModularUMItSNEPlot.R")
 source("scripts/ModularClusterExplore10x.R")
-source("scripts/ModularReadCellRanger.R")
+# source("scripts/ModularReadCellRanger.R")
 
 shinyUI(
   fluidPage(
@@ -20,8 +20,16 @@ shinyUI(
   sidebarLayout(
     
     sidebarPanel(
+      # ReadCellRangerUI("read_10x")
       
-      ReadCellRangerUI("10x_path")
+      radioButtons("input_data", "Select Input Source", choices = c("Example", "Select Directory")),
+      conditionalPanel(
+        condition = "input.input_data == 'Select Directory'",
+        shinyDirButton(id = "file_path",
+                       label = "Cellranger Pipestance Path",
+                       title = "Button")
+      ), # conditionalPanel
+      actionButton("read_data", "Read Data")
       
     ), # sidebarPanel
     
