@@ -10,26 +10,43 @@ ClusterExplore10xUI <- function(id) {
   
   ## Ui Outputs Here from server below
   fillCol(
-    div(
+    
+    column(width = 12,
       shiny::sliderInput(inputId = ns("num_clusters"), 
                        label = "Number of Clusters", 
                        min = 2, max = 10, 
                        value = 5, step = 1)
-      ), # div
-      div(
-        plotOutput(ns("cluster_plot"))
-        ), # div
-      div(
-        sliderInput(inputId = "n_genes", 
-                    label = "Number of Genes", 
-                    min = 1, max = 20, 
-                    value = 3, step = 1),
-        sliderInput(inputId = "hm_limits",
-                    label = "Heatmap Limits",
-                    min = -5, max = 5,
-                    value = c(-1, 2), step = 0.5),
-        plotOutput(ns("pheatmap"))
-        ) # div
+      ), # column
+    
+    column(width = 12,
+           
+           div(
+             shiny::plotOutput(ns("cluster_plot"))
+           ) # div
+           
+        ), # column
+    
+    column(width = 12,
+        div(
+          shiny::sliderInput(inputId = "n_genes", 
+                             label = "Number of Genes", 
+                             min = 1, max = 20, 
+                             value = 3, step = 1)
+          ), # div
+        
+        div(
+          shiny::sliderInput(inputId = "hm_limits",
+                             label = "Heatmap Limits",
+                             min = -5, max = 5,
+                             value = c(-1, 2), step = 0.5)
+          ), # div
+        
+        div(
+          shiny::plotOutput(ns("pheatmap"))
+          ) # div
+        
+        ) # column
+    
     ) # fillCol
 
 }
@@ -48,7 +65,7 @@ ClusterExplore10xServer <- function(input, output, session, outs) {
   
   output$cluster_plot <- renderPlot({
     
-    example_col <- rev(brewer.pal(input$num_cluster, ifelse(example_K < 9, "Set2", "Set3"))) # customize plotting colors
+    example_col <- rev(brewer.pal(input$num_clusters, ifelse(input$num_clusters < 9, "Set2", "Set3"))) # customize plotting colors
     visualize_clusters(cluster_result()$Cluster,tsne_proj[c("TSNE.1","TSNE.2")],
                        colour = example_col)
 
@@ -56,7 +73,7 @@ ClusterExplore10xServer <- function(input, output, session, outs) {
   
   output$pheatmap <- renderPlot({
     
-    example_col <- rev(brewer.pal(input$num_cluster, ifelse(example_K < 9, "Set2", "Set3"))) # customize plotting colors
+    example_col <- rev(brewer.pal(input$num_clusters, ifelse(input$num_clusters < 9, "Set2", "Set3"))) # customize plotting colors
     # sort the cells by the cluster labels
     cells_to_plot <- order_cell_by_clusters(outs()[["gbm"]], cluster_result()$Cluster)
     # order the genes from most up-regulated to most down-regulated in each cluster

@@ -17,6 +17,7 @@ library(plotly)
 library(cellranger)
 library(cellrangerRkit)
 source("scripts/ModularUMItSNEPlot.R")
+source("scripts/ModularClusterExplore10x.R")
 
 shinyServer(function(input, output, session) {
   
@@ -74,6 +75,10 @@ shinyServer(function(input, output, session) {
             id = "tSNE", 
             outs = outs, 
             gene_symbols = reactive({input$gene_symbol}))
+  
+  callModule(module = ClusterExplore10xServer,
+             id = "cluster_explore",
+             outs = outs)
     
   output$heatmap <- renderPlot({
     

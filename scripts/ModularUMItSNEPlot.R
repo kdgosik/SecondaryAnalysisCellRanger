@@ -10,18 +10,18 @@ UMItSNEPlotUI <- function(id) {
   
   ## Ui Outputs Here from server below
   fillCol(
-    div(
+    column(width = 12,
       shiny::sliderInput(inputId = ns("plot_limits"), 
                        label = "Value Limits", 
                        min = 0, max = 10, 
                        value = c(0, 4), step = 0.5)
-      ), # div
-      div(
+      ), # column
+    column(width = 12,
         plotly::plotlyOutput(ns("plot1"))
-        ), # div
-      div(
+        ), # column
+    column(width = 12,
         shiny::verbatimTextOutput(ns("transform"))
-        ) # div
+        ) # column
     ) # fillCol
 
 }

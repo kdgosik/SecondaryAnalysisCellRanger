@@ -43,6 +43,9 @@ shinyUI(
         tabPanel(title = "tSNE",
           UMItSNEPlotUI("tSNE")
         ),
+        tabPanel(title = "Cluster",
+          ClusterExplore10xUI("cluster_explore")
+                 ),
         tabPanel(title = "Heatmap",
           plotOutput("heatmap")
         )
