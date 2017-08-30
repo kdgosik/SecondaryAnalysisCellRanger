@@ -14,11 +14,15 @@ UMItSNEPlotUI <- function(id) {
       shiny::sliderInput(inputId = ns("plot_limits"), 
                        label = "Value Limits", 
                        min = 0, max = 10, 
-                       value = c(0, 4), step = 0.5),
-      plotly::plotlyOutput(ns("plot1")),
-      shiny::verbatimTextOutput(ns("transform"))
-    ) # div
-  ) # fillCol
+                       value = c(0, 4), step = 0.5)
+      ), # div
+      div(
+        plotly::plotlyOutput(ns("plot1"))
+        ), # div
+      div(
+        shiny::verbatimTextOutput(ns("transform"))
+        ) # div
+    ) # fillCol
 
 }
 

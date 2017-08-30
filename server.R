@@ -16,7 +16,7 @@ library(shinyFiles)
 library(plotly)
 library(cellranger)
 library(cellrangerRkit)
-# source("scripts/ModularUMItSNEPlot.R")
+source("scripts/ModularUMItSNEPlot.R")
 
 shinyServer(function(input, output, session) {
   
@@ -69,41 +69,11 @@ shinyServer(function(input, output, session) {
     
   })
   
-    # output plotly version of tSNE plot
-  output$genePlot <- renderPlotly({
-
-      # if not genes are provide, displays total counts
-    if( is.null(input$gene_symbol) ){
-
-      visualize_umi_counts(gbm = outs()[["gbm"]],
-                           projection = outs()[["tsne_proj"]][c("TSNE.1", "TSNE.2")],
-                           limits = input$plot_limits)
-
-    }else{
-
-        # display plot by genes provided
-      visualize_gene_markers(gbm = outs()[["gbm_log"]],
-                             gene_probes = input$gene_symbol,
-                             projection = outs()[["tsne_proj"]][c("TSNE.1", "TSNE.2")],
-                             limits = input$plot_limits)
-
-    }
-
-  })
-
-    # printing out the number of non-zero results
-  output$transform <- renderPrint({
-
-    paste("After transformation, the gene-barcode matrix contains",
-          dim(outs()[["gbm_log"]])[1], "genes for",
-          dim(outs()[["gbm_log"]])[2], "cells")
-
-    })
-
-  # callModule(module = UMItSNEPlotServer, 
-  #            id = "tSNE", 
-  #            outs = outs, 
-  #            gene_symbols = reactive({input$gene_symbol}))
+    # calling ModularUMItSNEPlot.R functions
+  callModule(module = UMItSNEPlotServer, 
+            id = "tSNE", 
+            outs = outs, 
+            gene_symbols = reactive({input$gene_symbol}))
     
   output$heatmap <- renderPlot({
     
