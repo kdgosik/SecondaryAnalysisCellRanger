@@ -13,118 +13,96 @@ if( !{"cellrangerRkit" %in% installed.packages()} ) {
   # Load packages
 library(shiny)
 library(shinyFiles)
-library(plotly)
 library(cellranger)
 library(cellrangerRkit)
-# source("scripts/ModularUMItSNEPlot.R")
+source("src/ModularUMItSNEPlot.R")
+source("src/ModularClusterExplore10x.R")
+
 
 shinyServer(function(input, output, session) {
   
-    # defines root directory for the user
+  # defines root directory for the user
   shinyDirChoose(input, 'file_path', roots = c(root = '/'))
-  
-    # gets the path to the cellranger_pipestance_path
-  outs <- reactive({
-    
-    cellranger_pipestance_path <- "data"
-    
-    if( input$input_data != "Example" ){
-        # path to cell ranger output
-      home <- normalizePath("/") # normalizes home path
-    
-        # gets cellranger path from the inputed directory
-      cellranger_pipestance_path <- file.path(home, 
-                                              paste(unlist(input$file_path$path[-1]), 
-                                              collapse = .Platform$file.sep))
 
-    }
+  # gets the path to the cellranger_pipestance_path
+  cellranger_pipestance_path <- reactive({
+
+    path <- "data/outs/filtered_gene_bc_matrices/hg19"
+
+  if( input$input_data != "Example" ) {
+    # path to cell ranger output
+    home <- normalizePath("/") # normalizes home path
+
+    # gets cellranger path from the inputed directory
+    path <- file.path(home,
+                      paste(unlist(input$file_path$path[-1]), collapse = .Platform$file.sep))
+
+  }
+
+    return(path)
+
+  })
+
+  outs <- eventReactive(input$read_data, {
+
+    selected_path <- cellranger_pipestance_path()
     
-      # loads gene - barcode matrix
-    gbm <- load_cellranger_matrix(cellranger_pipestance_path)
+    # reducing Seurat path for Read10x to cellranger expected path for load_cellranger_matrix
+    outs_pos <- grep("outs", unlist(strsplit(selected_path, "/"))) - 1
+    selected_path <- file.path(paste(unlist(strsplit(selected_path, "/"))[1:outs_pos], collapse = .Platform$file.sep))
     
-      # normalize nonzero genes
+    # loads gene - barcode matrix
+    gbm <- load_cellranger_matrix( selected_path )
+
+    # normalize nonzero genes
     use_genes <- get_nonzero_genes(gbm)
     gbm_bcnorm <- normalize_barcode_sums_to_median(gbm[use_genes, ])
     gbm_log <- log_gene_bc_matrix(gbm_bcnorm, base = 10)
-    
-      # loads analysis results
-    analysis_results <- load_cellranger_analysis_results(cellranger_pipestance_path)
-  
-      # returns list of the outputs needed for plots
-    return(list(gbm = gbm, 
+
+    # loads analysis results
+    analysis_results <- load_cellranger_analysis_results( selected_path )
+
+    # returns list of the outputs needed for plots
+    return(list(gbm = gbm,
                 gbm_log = gbm_log,
                 tsne_proj = analysis_results$tsne, # tSNE projects from analysis results
                 clustering = analysis_results$clustering) # clustering from analysis results
-           ) 
+    )
 
   })
-  
-    # when input directory is selected updates gene symbols name for selection
-  observeEvent(!is.null(outs) | !is.null(input$file_path), {
-    
-    updateSelectizeInput(session = session, 
+
+  # when input directory is selected updates gene symbols name for selection
+  observeEvent(!is.null(outs()), {
+
+    updateSelectizeInput(session = session,
                          inputId = "gene_symbol",
                          label = "Select Gene Symbols",
                          choices = fData(outs()[["gbm_log"]])$symbol)
-    
+
   })
   
-    # output plotly version of tSNE plot
-  output$genePlot <- renderPlotly({
+  seurat_obj <- eventReactive(input$read_data, {
+    data10x <- Read10X(cellranger_pipestance_path())
+    data10x <- CreateSeuratObject(raw.data = data10x, 
+                                  min.cells = 3, 
+                                  min.genes = 200, 
+                                  project = "10X_Data")
+    data10x
 
-      # if not genes are provide, displays total counts
-    if( is.null(input$gene_symbol) ){
-
-      visualize_umi_counts(gbm = outs()[["gbm"]],
-                           projection = outs()[["tsne_proj"]][c("TSNE.1", "TSNE.2")],
-                           limits = input$plot_limits)
-
-    }else{
-
-        # display plot by genes provided
-      visualize_gene_markers(gbm = outs()[["gbm_log"]],
-                             gene_probes = input$gene_symbol,
-                             projection = outs()[["tsne_proj"]][c("TSNE.1", "TSNE.2")],
-                             limits = input$plot_limits)
-
-    }
 
   })
-
-    # printing out the number of non-zero results
-  output$transform <- renderPrint({
-
-    paste("After transformation, the gene-barcode matrix contains",
-          dim(outs()[["gbm_log"]])[1], "genes for",
-          dim(outs()[["gbm_log"]])[2], "cells")
-
-    })
-
-  # callModule(module = UMItSNEPlotServer, 
-  #            id = "tSNE", 
-  #            outs = outs, 
-  #            gene_symbols = reactive({input$gene_symbol}))
-    
-  output$heatmap <- renderPlot({
-    
-    example_K <- 3 # number of clusters (use "Set3" for brewer.pal below if example_K > 8)
-    example_col <- rev(brewer.pal(example_K,"Set2")) # customize plotting colors
-    cluster_result <- outs()[["clustering"]][[paste("kmeans", example_K,"clusters",sep="_")]]
-    
-    # sort the cells by the cluster labels
-    cells_to_plot <- order_cell_by_clusters(outs()[["gbm"]], cluster_result$Cluster)
-    
-    # order the genes from most up-regulated to most down-regulated in each cluster
-    prioritized_genes <- prioritize_top_genes(outs()[["gbm"]], cluster_result$Cluster, "sseq", min_mean=0.5)
-    
-    # create values and axis annotations for pheatmap
-    gbm_pheatmap(gbm = log_gene_bc_matrix(outs()[["gbm"]]), 
-                 genes_to_plot = prioritized_genes, 
-                 cells_to_plot = cells_to_plot,
-                 n_genes = 3, 
-                 colour = example_col, 
-                 limits = c(-1, 2))
-    
+  
+  output$seurat <- renderPrint({
+    head(seurat_obj()@meta.data)
   })
+  
+    # calling ModularUMItSNEPlot.R functions
+  callModule(module = UMItSNEPlotServer, 
+            id = "tSNE", 
+            outs = outs)
+  
+  callModule(module = ClusterExplore10xServer,
+             id = "cluster_explore",
+             outs = outs)
   
 })

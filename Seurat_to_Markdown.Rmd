@@ -1,0 +1,204 @@
+---
+title: "Seurat Output"
+date: "`r format(Sys.time(), '%m/%d/%Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+params:
+  project: ProjectTitle
+  path:
+    label: "10X file path"
+    value: "data/outs/filtered_gene_bc_matrices/hg19"
+    input: file
+  cells:
+    label: "Include genes this many cells"
+    value: 3
+    input: slider
+    min: 1
+    max: 20
+  genes:
+    label: "Include cells where at least this many genes are detected"
+    value: 200
+    input: slider
+    min: 10
+    max: 500
+  max_mt:
+    label: "Max mitochondrial genes present"
+    value: 0.05
+    input: numeric
+    min: 0
+    max: 1
+    step: 0.01
+---
+## Introduction
+
+This is literally a copy and paste of this [Seurat tutorial](http://satijalab.org/seurat/pbmc3k_tutorial.html) meant as a first pass at 10x data.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Setup the Seurat Object
+
+The original tutorial analyzed a dataset of Peripheral Blood Mononuclear Cells (PBMC) freely available from 10X Genomics. There are 2,700 single cells that were sequenced on the Illumina NextSeq 500. The raw data can be found [here](https://s3-us-west-2.amazonaws.com/10x.files/samples/cell/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz).
+
+We start by reading in the data. All features in Seurat have been configured to work with sparse matrices which results in significant memory and speed savings for Drop-seq/inDrop/10x data.
+
+```{r SeuratObject, echo = FALSE, message = FALSE, warning = FALSE}
+library(Seurat)
+library(dplyr)
+library(Matrix)
+
+# Load the dataset
+raw_data <- Read10X(data.dir = params$path)
+
+# Initialize the Seurat object with the raw (non-normalized data).  Keep all
+# genes expressed in >= 3 cells (~0.1% of the data). Keep all cells with at
+# least 200 detected genes
+obj <- CreateSeuratObject(raw.data = raw_data, 
+                          min.cells = params$cells, 
+                          min.genes = params$genes, 
+                          project = params$project)
+```
+
+## Standard pre-processing workflow
+
+The steps below encompass the standard pre-processing workflow for scRNA-seq data in Seurat. These represent the creation of a Seurat object, the selection and filtration of cells based on QC metrics, data normalization and scaling, and the detection of highly variable genes. In previous versions, we grouped many of these steps together in the <code>Setup</code> function, but in v2, we separate these steps into a clear and sequential workflow.
+
+## QC and selecting cells for further analysis
+
+While the <code>CreateSeuratObject</code> imposes a basic minimum gene-cutoff, you may want to filter out cells at this stage based on technical or biological parameters. Seurat allows you to easily explore QC metrics and filter cells based on any user-defined criteria. In the example below, we visualize gene and molecule counts, plot their relationship, and exclude cells with a clear outlier number of genes detected as potential multiplets. Of course this is not a guaranteed method to exclude cell doublets, but we include this as an example of filtering user-defined outlier cells. We also filter cells based on the percentage of mitochondrial genes present.
+
+
+```{r QCSelection}
+# The number of genes and UMIs (nGene and nUMI) are automatically calculated
+# for every object by Seurat.  For non-UMI data, nUMI represents the sum of
+# the non-normalized values within a cell We calculate the percentage of
+# mitochondrial genes here and store it in percent.mito using AddMetaData.
+# We use object@raw.data since this represents non-transformed and
+# non-log-normalized counts The % of UMI mapping to MT-genes is a common
+# scRNA-seq QC metric.  NOTE: You must have the Matrix package loaded to
+# calculate the percent.mito values.
+mito.genes <- grep(pattern = "^MT-", x = rownames(x = obj@data), value = TRUE)
+percent.mito <- Matrix::colSums(obj@raw.data[mito.genes, ])/Matrix::colSums(obj@raw.data)
+
+# AddMetaData adds columns to object@meta.data, and is a great place to
+# stash QC stats
+obj <- AddMetaData(object = obj, metadata = percent.mito, col.name = "percent.mito")
+VlnPlot(object = obj, features.plot = c("nGene", "nUMI", "percent.mito"), nCol = 3)
+```
+
+GenePlot is typically used to visualize gene-gene relationships, but can
+be used for anything calculated by the object, i.e. columns in
+object@meta.data, PC scores etc.  Since there is a rare subset of cells
+with an outlier level of high mitochondrial percentage and also low UMI
+content, we filter these as well
+
+```{r GenePlot}
+par(mfrow = c(1, 2))
+GenePlot(object = obj, gene1 = "nUMI", gene2 = "percent.mito")
+GenePlot(object = obj, gene1 = "nUMI", gene2 = "nGene")
+```
+
+We filter out, by default, cells that have unique gene counts over 2,500 or less than
+200 Note that low.thresholds and high.thresholds are used to define a
+'gate' -Inf and Inf should be used if you don't want a lower or upper
+threshold.  These can be changed from default when first rendering the document.
+
+```{r FilterThreshold}
+
+obj <- FilterCells(object = obj, subset.names = c("nGene", "percent.mito"), 
+    low.thresholds = c(params$genes), high.thresholds = c(Inf, params$max_mt))
+```
+
+
+## Normalizing the data
+After removing unwanted cells from the dataset, the next step is to normalize the data. By default, we employ a global-scaling normalization method “LogNormalize” that normalizes the gene expression measurements for each cell by the total expression, multiplies this by a scale factor (10,000 by default), and log-transforms the result.
+
+```{r NormalizeData}
+obj <- NormalizeData(object = obj, 
+                      normalization.method = "LogNormalize", 
+                      scale.factor = 10000)
+```
+
+## Detection of variable genes across the single cells
+
+Seurat calculates highly variable genes and focuses on these for downstream analysis. FindVariableGenes calculates the average expression and dispersion for each gene, places these genes into bins, and then calculates a z-score for dispersion within each bin. This helps control for the relationship between variability and average expression. This function is unchanged from (Macosko et al.), but new methods for variable gene expression identification are coming soon. We suggest that users set these parameters to mark visual outliers on the dispersion plot, but the exact parameter settings may vary based on the data type, heterogeneity in the sample, and normalization strategy. The parameters here identify ~2,000 variable genes, and represent typical parameter settings for UMI data that is normalized to a total of 1e4 molecules.
+
+
+```{r DetectVarGenes}
+obj <- FindVariableGenes(object = obj, 
+                         mean.function = ExpMean, 
+                         dispersion.function = LogVMR, 
+                         x.low.cutoff = 0.0125, 
+                         x.high.cutoff = 3, 
+                         y.cutoff = 0.5)
+
+length(x = obj@var.genes)
+```
+
+
+## Scaling the data and removing unwanted sources of variation
+
+Your single cell dataset likely contains ‘uninteresting’ sources of variation. This could include not only technical noise, but batch effects, or even biological sources of variation (cell cycle stage). As suggested in Buettner et al, NBT, 2015, regressing these signals out of the analysis can improve downstream dimensionality reduction and clustering. To mitigate the effect of these signals, Seurat constructs linear models to predict gene expression based on user-defined variables. The scaled z-scored residuals of these models are stored in the scale.data slot, and are used for dimensionality reduction and clustering.
+
+We can regress out cell-cell variation in gene expression driven by batch (if applicable), cell alignment rate (as provided by Drop-seq tools for Drop-seq data), the number of detected molecules, and mitochondrial gene expression. For cycling cells, we can also learn a ‘cell-cycle’ score (see example [HERE]) and regress this out as well. In this simple example here for post-mitotic blood cells, we regress on the number of detected molecules per cell as well as the percentage mitochondrial gene content.
+
+Seurat v2.0 implements this regression as part of the data scaling process. Therefore, the <code>RegressOut</code> function has been deprecated, and replaced with the vars.to.regress argument in <code>ScaleData</code>.
+
+```{r ScaleData}
+obj <- ScaleData(object = obj, vars.to.regress = c("nUMI", "percent.mito"))
+```
+
+
+## Perform linear dimensional reduction
+
+Next we perform PCA on the scaled data. By default, the genes in <code>object@var.genes</code> are used as input, but can be defined using pc.genes. We have typically found that running dimensionality reduction on highly variable genes can improve performance. However, with UMI data - particularly after regressing out technical variables, we often see that PCA returns similar (albeit slower) results when run on much larger subsets of genes, including the whole transcriptome.
+
+Seurat provides several useful ways of visualizing both cells and genes that define the PCA, including <code>PrintPCA</code>, <code>VizPCA</code>,  <code>PCAPlot</code>, and <code>PCHeatmap</code>
+
+### PrintPCA
+
+```{r RunPCA}
+obj <- RunPCA(object = obj, 
+              pc.genes = obj@var.genes, 
+              do.print = TRUE, 
+              pcs.print = 1:5, 
+              genes.print = 5)
+```
+
+### VizPCA
+
+```{r VizPCA}
+VizPCA(object = obj, pcs.use = 1:2)
+```
+
+### PCA Plot
+
+```{r}
+PCAPlot(object = obj, dim.1 = 1, dim.2 = 2)
+```
+
+### Project PCA
+
+ProjectPCA scores each gene in the dataset (including genes not included
+in the PCA) based on their correlation with the calculated components.
+Though we don't use this further here, it can be used to identify markers
+that are strongly correlated with cellular heterogeneity, but may not have
+passed through variable gene selection.  The results of the projected PCA
+can be explored by setting use.full=T in the functions above
+
+```{r ProjectPCA}
+obj <- ProjectPCA(object = obj, do.print = FALSE)
+```
+
+### PCA Heatmap
+
+In particular PCHeatmap allows for easy exploration of the primary sources of heterogeneity in a dataset, and can be useful when trying to decide which PCs to include for further downstream analyses. Both cells and genes are ordered according to their PCA scores. Setting cells.use to a number plots the ‘extreme’ cells on both ends of the spectrum, which dramatically speeds plotting for large datasets. Though clearly a supervised analysis, we find this to be a valuable tool for exploring correlated gene sets.
+
+```{r PCAHeatmap}
+PCHeatmap(object = obj, pc.use = 1, cells.use = 500, do.balanced = TRUE, label.columns = FALSE)
+```
+
+

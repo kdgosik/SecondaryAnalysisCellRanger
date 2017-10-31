@@ -7,9 +7,9 @@
 
 library(shiny)
 library(shinyFiles)
-library(plotly)
-library(cellranger)
-library(cellrangerRkit)
+source("src/ModularUMItSNEPlot.R")
+source("src/ModularClusterExplore10x.R")
+
 
 shinyUI(
   fluidPage(
@@ -19,36 +19,40 @@ shinyUI(
   
   # Sidebar with a selector for genes
   sidebarLayout(
+    
     sidebarPanel(
+      # ReadCellRangerUI("read_10x")
       
       radioButtons("input_data", "Select Input Source", choices = c("Example", "Select Directory")),
-      
       conditionalPanel(
         condition = "input.input_data == 'Select Directory'",
-        shinyDirButton(id = "file_path", 
-                       label = "Cellranger Pipestance Path",
-                       title = "Button")
-      ),
+        shinyDirButton(id = "file_path",
+                       label = "10X Path",
+                       title = "Button"),
+        p("eg  ../filtered_gene_bc_matrices/hg19/")
+      ), # conditionalPanel
+      actionButton("read_data", "Read Data")
       
-      selectizeInput(inputId = "gene_symbol", 
-                     label = "Select Gene Symbols", 
-                     choices = "",
-                     multiple = TRUE),
-      
-      sliderInput(inputId = "plot_limits",
-                  label = "Value Limits",
-                  min = 0,
-                  max = 10,
-                  value = c(0, 4),
-                  step = 0.5)
-    ),
+    ), # sidebarPanel
     
     # Show the t-SNE plot
     mainPanel(
-      plotlyOutput("genePlot"),
-      verbatimTextOutput("transform"),
-      # UMItSNEPlotUI("tSNE"),
-      plotOutput("heatmap")
+      tabsetPanel(
+        
+        tabPanel(title = "tSNE",
+          UMItSNEPlotUI("tSNE")
+          ), # tabPanel
+        
+        tabPanel(title = "Cluster",
+          ClusterExplore10xUI("cluster_explore")
+          ), # tabPanel
+        
+        tabPanel(title = "Seurat",
+                textOutput("seurat")
+        ) # tabPanel
+        
+      ) # tabsetPanel
+      
       ) # mainPanel
     
     ) # sidebarLayout
