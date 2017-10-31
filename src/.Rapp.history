@@ -1,0 +1,29 @@
+library(cellranger)
+library(cellranger)
+library(cellranger)
+library(cellranger)
+library(cellranger)
+library(cellranger)
+library(cellrangerRkit)
+library(cellrangerRkit)
+library(cellrangerRkit)
+library(proxy)
+library(text2vec)
+library(magrittr)
+library(Matrix)
+jaccard_similarity <- function(m) {
+A <- tcrossprod(m)#
+  im <- which(A > 0, arr.ind = TRUE, useNames = FALSE)#
+  b <- rowSums(m)#
+  Aim <- A[im]#
+  sparseMatrix(#
+    i = im[,1],#
+    j = im[,2],#
+    x = Aim / (b[im[,1]] + b[im[,2]] - Aim),#
+    dims = dim(A)#
+  )#
+}
+gbm <- load_cellranger_matrix( "data" )
+dir()
+dir("../")
+gbm <- load_cellranger_matrix( "../data" )

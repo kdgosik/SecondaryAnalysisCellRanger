@@ -15,9 +15,9 @@ library(shiny)
 library(shinyFiles)
 library(cellranger)
 library(cellrangerRkit)
-source("scripts/ModularUMItSNEPlot.R")
-source("scripts/ModularClusterExplore10x.R")
-# source("scripts/ModularReadCellRanger.R")
+source("src/ModularUMItSNEPlot.R")
+source("src/ModularClusterExplore10x.R")
+
 
 shinyServer(function(input, output, session) {
   
@@ -27,7 +27,7 @@ shinyServer(function(input, output, session) {
   # gets the path to the cellranger_pipestance_path
   cellranger_pipestance_path <- reactive({
 
-    path <- "data"
+    path <- "data/outs/filtered_gene_bc_matrices/hg19"
 
   if( input$input_data != "Example" ) {
     # path to cell ranger output
@@ -46,7 +46,11 @@ shinyServer(function(input, output, session) {
   outs <- eventReactive(input$read_data, {
 
     selected_path <- cellranger_pipestance_path()
-
+    
+    # reducing Seurat path for Read10x to cellranger expected path for load_cellranger_matrix
+    outs_pos <- grep("outs", unlist(strsplit(selected_path, "/"))) - 1
+    selected_path <- file.path(paste(unlist(strsplit(selected_path, "/"))[1:outs_pos], collapse = .Platform$file.sep))
+    
     # loads gene - barcode matrix
     gbm <- load_cellranger_matrix( selected_path )
 
@@ -56,7 +60,7 @@ shinyServer(function(input, output, session) {
     gbm_log <- log_gene_bc_matrix(gbm_bcnorm, base = 10)
 
     # loads analysis results
-    analysis_results <- load_cellranger_analysis_results(cellranger_pipestance_path())
+    analysis_results <- load_cellranger_analysis_results( selected_path )
 
     # returns list of the outputs needed for plots
     return(list(gbm = gbm,
@@ -77,7 +81,20 @@ shinyServer(function(input, output, session) {
 
   })
   
-  # outs <- callModule(module = ReadCellRangerServer, id = "read_10x")
+  seurat_obj <- eventReactive(input$read_data, {
+    data10x <- Read10X(cellranger_pipestance_path())
+    data10x <- CreateSeuratObject(raw.data = data10x, 
+                                  min.cells = 3, 
+                                  min.genes = 200, 
+                                  project = "10X_Data")
+    data10x
+
+
+  })
+  
+  output$seurat <- renderPrint({
+    head(seurat_obj()@meta.data)
+  })
   
     # calling ModularUMItSNEPlot.R functions
   callModule(module = UMItSNEPlotServer, 

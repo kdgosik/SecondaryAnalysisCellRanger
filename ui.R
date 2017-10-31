@@ -6,9 +6,10 @@
 #
 
 library(shiny)
-source("scripts/ModularUMItSNEPlot.R")
-source("scripts/ModularClusterExplore10x.R")
-# source("scripts/ModularReadCellRanger.R")
+library(shinyFiles)
+source("src/ModularUMItSNEPlot.R")
+source("src/ModularClusterExplore10x.R")
+
 
 shinyUI(
   fluidPage(
@@ -26,8 +27,9 @@ shinyUI(
       conditionalPanel(
         condition = "input.input_data == 'Select Directory'",
         shinyDirButton(id = "file_path",
-                       label = "Cellranger Pipestance Path",
-                       title = "Button")
+                       label = "10X Path",
+                       title = "Button"),
+        p("eg  ../filtered_gene_bc_matrices/hg19/")
       ), # conditionalPanel
       actionButton("read_data", "Read Data")
       
@@ -43,7 +45,11 @@ shinyUI(
         
         tabPanel(title = "Cluster",
           ClusterExplore10xUI("cluster_explore")
-          ) # tabPanel
+          ), # tabPanel
+        
+        tabPanel(title = "Seurat",
+                textOutput("seurat")
+        ) # tabPanel
         
       ) # tabsetPanel
       
