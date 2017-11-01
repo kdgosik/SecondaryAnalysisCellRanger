@@ -5,14 +5,10 @@
 # http://shiny.rstudio.com
 #
 
-  # if cellranger R kit is not installed then install it
-if( !{"cellrangerRkit" %in% installed.packages()} ) {
-  source("http://cf.10xgenomics.com/supp/cell-exp/rkit-install-2.0.0.R")
-}
-
   # Load packages
 library(shiny)
 library(shinyFiles)
+library(shinycssloaders)
 library(cellranger)
 library(cellrangerRkit)
 source("src/ModularUMItSNEPlot.R")
@@ -22,7 +18,11 @@ source("src/ModularIdentifytSNE.R")
 
 shinyServer(function(input, output, session) {
   
-  updateSelectInput(session, "data_source", "Select Data Source", choices = gsub(".Rda","",dir("data", pattern = ".Rda")))
+  observe({
+    
+    updateSelectInput(session, "data_source", "Select Data Source", choices = gsub(".rds","",dir("data", pattern = ".rds")))
+    
+  })
   
   # defines root directory for the user
   shinyDirChoose(input, 'file_path', roots = c(root = '/'))
@@ -49,11 +49,23 @@ shinyServer(function(input, output, session) {
                                     max_mt = input$max_mt),
                       output_file = paste0("docs/", project_name, ".html"))
   })
+  
+  
+  seurat_obj <- eventReactive(input$read_data, {
+    
+    withProgress(message = "Loading Data", {
+      
+      readRDS(file = dir("data", pattern = input$data_source, full.names = TRUE))
+      
+    })
+    
+  })
+  
 
   outs <- eventReactive(input$read_data, {
-    load(file = dir("data", pattern = input$data_source, full.names = TRUE))
+    # load(file = dir("data", pattern = input$data_source, full.names = TRUE))
     # path stored in obj@misc from running Seurat_to_Markdown
-    selected_path <- obj@misc
+    selected_path <- seurat_obj()@misc
     
     # reducing Seurat path for Read10x to cellranger expected path for load_cellranger_matrix
     outs_pos <- grep("outs", unlist(strsplit(selected_path, "/"))) - 1
@@ -88,13 +100,6 @@ shinyServer(function(input, output, session) {
                          choices = fData(outs()[["gbm_log"]])$symbol)
 
   })
-  
-  seurat_obj <- eventReactive(input$read_data, {
-    
-    head(obj@meta)
-
-  })
-  
 
   
     # calling ModularUMItSNEPlot.R functions

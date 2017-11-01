@@ -3,6 +3,7 @@ library(ggplot2)
 library(plotly)
 library(cellranger)
 library(cellrangerRkit)
+library(shinycssloaders)
 
 # MODULE UI
 ClusterExplore10xUI <- function(id) {
@@ -19,7 +20,7 @@ ClusterExplore10xUI <- function(id) {
       ), # div
     
     div(
-      shiny::plotOutput(ns("cluster_plot"))
+      withSpinner(shiny::plotOutput(ns("cluster_plot")))
       ), # div
     
     div(

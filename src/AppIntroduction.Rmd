@@ -23,7 +23,7 @@ The Select Data option assumes that you have already run the **Create Output** o
 
 This button allows you to explore the file system in order to point to the file location where the cell ranger output was placed.  It is expecting to be pointed to the directory where the gene and barcode matrix is located.  (e.g. ../outs/filtered_gene_bc_matrices/hg19)
 
-![file_path]("src/file_path.png")
+![](file_path.png)
 
 ### Project Title
 

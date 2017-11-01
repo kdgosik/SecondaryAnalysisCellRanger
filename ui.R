@@ -69,8 +69,10 @@ shinyUI(
 
         condition = "input.task == 'Select Data'",
 
-        selectInput("data_source", "Select Data Source", choices = gsub(".Rda","",dir("data", pattern = ".Rda"))),
-        actionButton("read_data", "Read Data")
+        selectInput("data_source", "Select Data Source", choices = gsub(".rds","",dir("data", pattern = ".rds"))),
+        actionButton("read_data", "Read Data"),
+        uiOutput("ui_data_load")
+
 
       ) # conditionalPanel
       

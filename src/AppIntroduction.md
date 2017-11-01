@@ -35,7 +35,7 @@ the file location where the cell ranger output was placed. It is
 expecting to be pointed to the directory where the gene and barcode
 matrix is located. (e.g. ../outs/filtered\_gene\_bc\_matrices/hg19)
 
-![file\_path](%22src/file_path.png%22)
+![](file_path.png)
 
 ### Project Title
 
