@@ -40,6 +40,13 @@ pbmc <- AddMetaData(object = pbmc, metadata = percent.mito, col.name = "percent.
 VlnPlot(object = pbmc, features.plot = c("nGene", "nUMI", "percent.mito"), nCol = 3)
 
 
+tools <- c("pan", "wheel_zoom", "box_zoom", "box_select", "reset")
+lst <- lapply(c("nGene", "percent.mito"), function(x){
+  figure(width = 300, height = 400, tools = tools, xlab = "nUMI", ylab = x) %>%
+  ly_points("nUMI", x, data = pbmc@meta.data)
+})
+grid_plot(lst, ncol = 2, same_axes = TRUE, link_data = TRUE)
+
 
 # GenePlot is typically used to visualize gene-gene relationships, but can
 # be used for anything calculated by the object, i.e. columns in

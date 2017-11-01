@@ -17,6 +17,7 @@ library(cellranger)
 library(cellrangerRkit)
 source("src/ModularUMItSNEPlot.R")
 source("src/ModularClusterExplore10x.R")
+source("src/ModularIdentifytSNE.R")
 
 
 shinyServer(function(input, output, session) {
@@ -24,28 +25,52 @@ shinyServer(function(input, output, session) {
   # defines root directory for the user
   shinyDirChoose(input, 'file_path', roots = c(root = '/'))
 
-  # gets the path to the cellranger_pipestance_path
-  cellranger_pipestance_path <- reactive({
-
-    path <- "data/outs/filtered_gene_bc_matrices/hg19"
-
-  if( input$input_data != "Example" ) {
-    # path to cell ranger output
-    home <- normalizePath("/") # normalizes home path
-
-    # gets cellranger path from the inputed directory
-    path <- file.path(home,
-                      paste(unlist(input$file_path$path[-1]), collapse = .Platform$file.sep))
-
-  }
-
-    return(path)
-
+  # # gets the path to the cellranger_pipestance_path
+  # cellranger_pipestance_path <- reactive({
+  # 
+  #   path <- "data/outs/filtered_gene_bc_matrices/hg19"
+  # 
+  # if( input$input_data != "Example" ) {
+  #   # path to cell ranger output
+  #   home <- normalizePath("/") # normalizes home path
+  # 
+  #   # gets cellranger path from the inputed directory
+  #   path <- file.path(home,
+  #                     paste(unlist(input$file_path$path[-1]), collapse = .Platform$file.sep))
+  # 
+  # }
+  # 
+  #   return(path)
+  # 
+  # })
+  
+  observeEvent(input$create_output, {
+    
+    project_inpt <- paste0(input$project, collpase = "_")
+    
+    path <- file.path(home, paste(unlist(input$file_path$path[-1]), collapse = .Platform$file.sep))
+    
+    if( !is.null(input$tissue_type) ) tissue_inpt <- paste0(input$tissue_type, collpase = "_")
+    if( !is.null(input$cell_type) ) celltype_inpt <- paste0(input$cell_type, collpase = "_")
+    
+    project_name <- paste0(c(project_inpt, 
+                             tissue_inpt, 
+                             celltype_inpt,
+                             format(Sys.Date())), collapse = "-")
+    
+    rmarkdown::render(input = "Seurat_to_Markdown.Rmd",
+                      params = list(project = project_name,
+                                    path = path,
+                                    cells = input$cells,
+                                    genes = input$genes,
+                                    max_mt = input$max_mt),
+                      output_file = paste0("docs/", project_name, ".html"))
   })
 
   outs <- eventReactive(input$read_data, {
-
-    selected_path <- cellranger_pipestance_path()
+    load(file = dir("data", pattern = input$data_source, full.names = TRUE))
+    # path stored in obj@misc from running Seurat_to_Markdown
+    selected_path <- obj@misc
     
     # reducing Seurat path for Read10x to cellranger expected path for load_cellranger_matrix
     outs_pos <- grep("outs", unlist(strsplit(selected_path, "/"))) - 1
@@ -82,19 +107,12 @@ shinyServer(function(input, output, session) {
   })
   
   seurat_obj <- eventReactive(input$read_data, {
-    data10x <- Read10X(cellranger_pipestance_path())
-    data10x <- CreateSeuratObject(raw.data = data10x, 
-                                  min.cells = 3, 
-                                  min.genes = 200, 
-                                  project = "10X_Data")
-    data10x
-
+    
+    head(obj@meta)
 
   })
   
-  output$seurat <- renderPrint({
-    head(seurat_obj()@meta.data)
-  })
+
   
     # calling ModularUMItSNEPlot.R functions
   callModule(module = UMItSNEPlotServer, 
@@ -105,4 +123,7 @@ shinyServer(function(input, output, session) {
              id = "cluster_explore",
              outs = outs)
   
+  callModule(module = IdentifytSNEServer,
+             id = "seurat_out",
+             obj = seurat_obj)
 })
