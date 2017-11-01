@@ -22,36 +22,19 @@ source("src/ModularIdentifytSNE.R")
 
 shinyServer(function(input, output, session) {
   
+  updateSelectInput(session, "data_source", "Select Data Source", choices = gsub(".Rda","",dir("data", pattern = ".Rda")))
+  
   # defines root directory for the user
   shinyDirChoose(input, 'file_path', roots = c(root = '/'))
-
-  # # gets the path to the cellranger_pipestance_path
-  # cellranger_pipestance_path <- reactive({
-  # 
-  #   path <- "data/outs/filtered_gene_bc_matrices/hg19"
-  # 
-  # if( input$input_data != "Example" ) {
-  #   # path to cell ranger output
-  #   home <- normalizePath("/") # normalizes home path
-  # 
-  #   # gets cellranger path from the inputed directory
-  #   path <- file.path(home,
-  #                     paste(unlist(input$file_path$path[-1]), collapse = .Platform$file.sep))
-  # 
-  # }
-  # 
-  #   return(path)
-  # 
-  # })
   
   observeEvent(input$create_output, {
     
-    project_inpt <- paste0(input$project, collpase = "_")
-    
+    project_inpt <- gsub(" ", "_", input$project)
+    home <- normalizePath("/") # normalizes home path
     path <- file.path(home, paste(unlist(input$file_path$path[-1]), collapse = .Platform$file.sep))
     
-    if( !is.null(input$tissue_type) ) tissue_inpt <- paste0(input$tissue_type, collpase = "_")
-    if( !is.null(input$cell_type) ) celltype_inpt <- paste0(input$cell_type, collpase = "_")
+    tissue_inpt <- ifelse(is.null(input$tissue_type), NULL, gsub(" ", "_", input$tissue_type))
+    celltype_inpt <- ifelse(is.null(input$cell_type), NULL, gsub(" ", "_", input$cell_type))
     
     project_name <- paste0(c(project_inpt, 
                              tissue_inpt, 
@@ -126,4 +109,21 @@ shinyServer(function(input, output, session) {
   callModule(module = IdentifytSNEServer,
              id = "seurat_out",
              obj = seurat_obj)
+  
+  
+  
+  # Store in a convenience variable
+  cdata <- session$clientData
+  
+  # Values from cdata returned as text
+  output$clientdataText <- renderText({
+    cnames <- names(cdata)
+    
+    allvalues <- lapply(cnames, function(name) {
+      paste(name, cdata[[name]], sep = " = ")
+    })
+    paste(allvalues, collapse = "\n")
+  })
+  
+  
 })

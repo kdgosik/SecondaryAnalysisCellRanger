@@ -99,6 +99,10 @@ shinyUI(
                 textOutput("seurat"),
                 IdentifytSNEUI("seurat_out")
                 
+        ), # tabPanel
+        
+        tabPanel(title = "Client Data",
+                 verbatimTextOutput("clientdataText")
         ) # tabPanel
         
       ) # tabsetPanel
