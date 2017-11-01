@@ -18,7 +18,10 @@ in more detail below. The output will be placed in the docs folder for
 you to use. This repository will be tracked on
 [github](https://github.com/kdgosik/SecondaryAnalysisCellRanger) but
 will only be for the program's code only. All data and output files
-created by using this will not be pushed to the repository.
+created by using this will not be pushed to the repository. The output
+is an html file that will be placed in the docs folder after you press
+Create Object. It will have your project title, tissue type and cell
+type in the file name
 
 #### Select Data
 
