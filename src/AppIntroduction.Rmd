@@ -1,6 +1,6 @@
 ---
-title: "AppInstructions"
-output: html_document
+title: "App Instructions"
+output: md_document
 ---
 
 ```{r setup, include=FALSE}

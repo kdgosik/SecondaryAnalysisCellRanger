@@ -83,7 +83,7 @@ shinyUI(
       tabsetPanel(
         
         tabPanel(title = "Introduction",
-                 includeHTML("src/AppIntroduction.html")
+                 includeMarkdown("src/AppIntroduction.md")
         ), # tabPanel
         
         # Show the t-SNE plot
