@@ -9,7 +9,7 @@ library(shiny)
 library(shinyFiles)
 source("src/ModularUMItSNEPlot.R")
 source("src/ModularClusterExplore10x.R")
-
+source("src/ModularIdentifytSNE.R")
 
 shinyUI(
   fluidPage(
@@ -21,34 +21,84 @@ shinyUI(
   sidebarLayout(
     
     sidebarPanel(
-      # ReadCellRangerUI("read_10x")
       
-      radioButtons("input_data", "Select Input Source", choices = c("Example", "Select Directory")),
+      radioButtons(inputId = "task", 
+                   label = "Select Task",
+                   choices = c("Create Output", "Select Data")),
+      
       conditionalPanel(
-        condition = "input.input_data == 'Select Directory'",
+        
+        condition = "input.task == 'Create Output'",
+        
         shinyDirButton(id = "file_path",
                        label = "10X Path",
                        title = "Button"),
-        p("eg  ../filtered_gene_bc_matrices/hg19/")
+        
+        p("eg  ../filtered_gene_bc_matrices/hg19"),
+        
+        textInput("project", "Project Title"),
+        
+        textInput("tissue_type", "Tissue Type"),
+        
+        textInput("cell_type", "Cell Type (if known)"),
+        
+        sliderInput(inputId = "cells", 
+                    label = "Minimum Cells Per Gene",
+                    value = 3,
+                    min = 1,
+                    max = 20),
+        
+        sliderInput(inputId = "genes",     
+                    label = "Minimum Genes Per Cell",
+                    value = 200,
+                    min = 10,
+                    max =  500),
+        
+        sliderInput(inputId = "max_mt",
+                     label = "Max Percent Mitochondrial Genes Present",
+                     value = 0.05,
+                     min = 0,
+                     max = 0.5,
+                     step = 0.01),
+        
+        actionButton("create_output", "Create Output")
+        
       ), # conditionalPanel
-      actionButton("read_data", "Read Data")
+      
+      conditionalPanel(
+
+        condition = "input.task == 'Select Data'",
+
+        selectInput("data_source", "Select Data Source", choices = gsub(".Rda","",dir("data", pattern = ".Rda"))),
+        actionButton("read_data", "Read Data")
+
+      ) # conditionalPanel
+      
       
     ), # sidebarPanel
+      
     
-    # Show the t-SNE plot
     mainPanel(
+        
       tabsetPanel(
         
-        tabPanel(title = "tSNE",
+        tabPanel(title = "Introduction",
+                 includeHTML("src/AppIntroduction.html")
+        ), # tabPanel
+        
+        # Show the t-SNE plot
+        tabPanel(title = "Cellranger tSNE",
           UMItSNEPlotUI("tSNE")
           ), # tabPanel
         
-        tabPanel(title = "Cluster",
+        tabPanel(title = "Cellranger Cluster",
           ClusterExplore10xUI("cluster_explore")
           ), # tabPanel
         
         tabPanel(title = "Seurat",
-                textOutput("seurat")
+                textOutput("seurat"),
+                IdentifytSNEUI("seurat_out")
+                
         ) # tabPanel
         
       ) # tabsetPanel
