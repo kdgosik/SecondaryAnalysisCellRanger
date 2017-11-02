@@ -18,7 +18,7 @@ source("src/ModularIdentifytSNE.R")
 
 shinyServer(function(input, output, session) {
   
-  observe({
+  reactive({
     
     updateSelectInput(session, "data_source", "Select Data Source", choices = gsub(".rds","",dir("data", pattern = ".rds")))
     
@@ -29,31 +29,36 @@ shinyServer(function(input, output, session) {
   
   observeEvent(input$create_output, {
     
-    project_inpt <- gsub(" ", "_", input$project)
-    home <- normalizePath("/") # normalizes home path
-    path <- file.path(home, paste(unlist(input$file_path$path[-1]), collapse = .Platform$file.sep))
+    withProgress(message = "Creating Output File...", {
     
-    tissue_inpt <- ifelse(is.null(input$tissue_type), NULL, gsub(" ", "_", input$tissue_type))
-    celltype_inpt <- ifelse(is.null(input$cell_type), NULL, gsub(" ", "_", input$cell_type))
+      project_inpt <- gsub(" ", "_", input$project)
+      home <- normalizePath("/") # normalizes home path
+      path <- file.path(home, paste(unlist(input$file_path$path[-1]), collapse = .Platform$file.sep))
     
-    project_name <- paste0(c(project_inpt, 
-                             tissue_inpt, 
-                             celltype_inpt,
-                             format(Sys.Date())), collapse = "-")
+      tissue_inpt <- ifelse(is.null(input$tissue_type), NULL, gsub(" ", "_", input$tissue_type))
+      celltype_inpt <- ifelse(is.null(input$cell_type), NULL, gsub(" ", "_", input$cell_type))
     
-    rmarkdown::render(input = "Seurat_to_Markdown.Rmd",
-                      params = list(project = project_name,
-                                    path = path,
-                                    cells = input$cells,
-                                    genes = input$genes,
-                                    max_mt = input$max_mt),
-                      output_file = paste0("docs/", project_name, ".html"))
+      project_name <- paste0(c(project_inpt, 
+                               tissue_inpt, 
+                               celltype_inpt,
+                               format(Sys.Date())), collapse = "-")
+    
+      rmarkdown::render(input = "Seurat_to_Markdown.Rmd",
+                        params = list(project = project_name,
+                                      path = path,
+                                      cells = input$cells,
+                                      genes = input$genes,
+                                      max_mt = input$max_mt),
+                        output_file = paste0("docs/", project_name, ".html"))
+    
+    })
+    
   })
   
   
   seurat_obj <- eventReactive(input$read_data, {
     
-    withProgress(message = "Loading Data", {
+    withProgress(message = "Loading Data...", {
       
       readRDS(file = dir("data", pattern = input$data_source, full.names = TRUE))
       
@@ -102,7 +107,7 @@ shinyServer(function(input, output, session) {
   })
 
   
-    # calling ModularUMItSNEPlot.R functions
+    # calling Modular functions
   callModule(module = UMItSNEPlotServer, 
             id = "tSNE", 
             outs = outs)
@@ -114,21 +119,6 @@ shinyServer(function(input, output, session) {
   callModule(module = IdentifytSNEServer,
              id = "seurat_out",
              obj = seurat_obj)
-  
-  
-  
-  # Store in a convenience variable
-  cdata <- session$clientData
-  
-  # Values from cdata returned as text
-  output$clientdataText <- renderText({
-    cnames <- names(cdata)
-    
-    allvalues <- lapply(cnames, function(name) {
-      paste(name, cdata[[name]], sep = " = ")
-    })
-    paste(allvalues, collapse = "\n")
-  })
   
   
 })

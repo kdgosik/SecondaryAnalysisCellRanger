@@ -1,7 +1,9 @@
 ## require()  for required libraries for module
 library(ggplot2)
 library(plotly)
+library(dplyr)
 library(Seurat)
+library(shinycssloaders)
 
 # MODULE UI
 IdentifytSNEUI <- function(id) {
@@ -11,11 +13,12 @@ IdentifytSNEUI <- function(id) {
   tagList(
     
     div(
-        plotly::plotlyOutput(ns("plot1"))
+      shiny::selectInput(ns("reduct"), "Reduction Type", choices = c("tsne", "pca")),
+      withSpinner(plotly::plotlyOutput(ns("plot1")))
         ), # div
     
     div(
-        shiny::verbatimTextOutput(ns("transform"))
+      shiny::verbatimTextOutput(ns("transform"))
         ) # div
     
     ) # tagList
@@ -32,28 +35,32 @@ IdentifytSNEServer <- function(input, output, session, obj) {
   
   # outputs plotly version of tSNE plot
   output$plot1 <- plotly::renderPlotly({
-   obj() <- RunTSNE(object = obj(), dims.use = 1:10, do.fast = TRUE)
-   select.cells <- TSNEPlot(object = obj(), do.identify = TRUE)
-   # select.cells <- FeaturePlot(object = obj(), do.identify = TRUE)    
+    
+   DimPlot(object = obj(), reduction.use = input$reduct)$plot
+    
   })
   
   # printing out the number of non-zero results
   output$transform <- renderPrint({
     
-   head(select.cells)
+    d <- event_data("plotly_selected")
+    
+    if (is.null(d)) {
+      
+      "Click and drag events (i.e., select/lasso) appear here (double-click to clear)" 
+      
+      }else {
+    
+        d %>%
+          dplyr::rename(tSNE_1 = x, tSNE_2 = y) %>%
+          left_join({ 
+            obj()@dr$tsne@cell.embeddings %>%
+              data.frame(., cell = rownames(.), stringsAsFactors = FALSE) 
+            }) %>%
+          .$cell
+          
+      }
     
   })
   
-  
-  # # when input directory is selected updates gene symbols name for selection
-  # observeEvent(!is.null(outs()), {
-  #   
-  #   updateSelectizeInput(session = session, 
-  #                        inputId = "gene_symbol",
-  #                        label = "Select Gene Symbols",
-  #                        choices = fData(outs()[["gbm_log"]])$symbol)
-  #   
-  # })
-  
-
 }
