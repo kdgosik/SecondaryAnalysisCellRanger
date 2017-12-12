@@ -10,6 +10,7 @@ library(shinyFiles)
 source("src/ModularUMItSNEPlot.R")
 source("src/ModularClusterExplore10x.R")
 source("src/ModularIdentifytSNE.R")
+#source("src/ModularMorpheusPlot.R")
 
 shinyUI(
   fluidPage(
@@ -100,8 +101,13 @@ shinyUI(
         tabPanel(title = "Seurat",
                 textOutput("seurat"),
                 IdentifytSNEUI("seurat_out")
-                
-        ) # tabPanel
+        ) # tabPanel                
+        #), # tabPanel
+        # 
+        # tabPanel(title = "Morpheus",
+        #          MorpheusUI("morpheus_out")
+        #          
+        # ) # tabPanel
         
       ) # tabsetPanel
       

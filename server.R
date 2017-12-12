@@ -20,7 +20,8 @@ shinyServer(function(input, output, session) {
   
   reactive({
     
-    updateSelectInput(session, "data_source", "Select Data Source", choices = gsub(".rds","",dir("data", pattern = ".rds")))
+    updateSelectInput(session, "data_source", "Select Data Source", 
+                      choices = gsub(".rds","",dir("data", pattern = ".rds")))
     
   })
   
@@ -119,6 +120,10 @@ shinyServer(function(input, output, session) {
   callModule(module = IdentifytSNEServer,
              id = "seurat_out",
              obj = seurat_obj)
+  
+  # callModule(module = MorpheusServer,
+  #            id = "morpheus_out",
+  #            outs = outs)
   
   
 })
